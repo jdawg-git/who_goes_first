@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import * as faceapi from "face-api.js";
 import { Button } from "@/components/ui/button";
-import { Shield, Crown, Camera, RotateCcw, Users, Loader2 } from "lucide-react";
+import { Shield, Crown, RotateCcw, Users, Loader2 } from "lucide-react";
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
 
@@ -21,12 +21,14 @@ export default function GamePage() {
   const [winnerIndex, setWinnerIndex] = useState(-1);
   const [errorMessage, setErrorMessage] = useState("");
   const [cameraError, setCameraError] = useState("");
+  const [canvasUrl, setCanvasUrl] = useState("");
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number>(0);
   const capturingRef = useRef(false);
+  const pendingStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     loadModels();
@@ -35,6 +37,16 @@ export default function GamePage() {
       cancelPendingAnimation();
     };
   }, []);
+
+  useEffect(() => {
+    if (phase === "camera" && pendingStreamRef.current && videoRef.current) {
+      const video = videoRef.current;
+      const stream = pendingStreamRef.current;
+      pendingStreamRef.current = null;
+      video.srcObject = stream;
+      video.play().catch(console.error);
+    }
+  }, [phase]);
 
   async function loadModels() {
     try {
@@ -56,10 +68,7 @@ export default function GamePage() {
         audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
+      pendingStreamRef.current = stream;
       setPhase("camera");
     } catch (err: any) {
       console.error("Camera error:", err);
@@ -70,6 +79,23 @@ export default function GamePage() {
       } else {
         setCameraError("Could not access camera. Please try again.");
       }
+    }
+  }
+
+  async function reconnectCamera() {
+    setCameraError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.error("Camera error:", err);
     }
   }
 
@@ -116,9 +142,9 @@ export default function GamePage() {
 
       if (detections.length === 0) {
         setErrorMessage("No faces found! Get closer together and try again.");
-        setPhase("camera");
         capturingRef.current = false;
-        await startCamera();
+        setPhase("camera");
+        await reconnectCamera();
         return;
       }
 
@@ -129,18 +155,19 @@ export default function GamePage() {
         height: d.box.height,
       }));
 
+      setCanvasUrl(canvas.toDataURL());
       setFaces(faceBoxes);
       const winner = Math.floor(Math.random() * faceBoxes.length);
       setWinnerIndex(winner);
-      setPhase("spinning");
       capturingRef.current = false;
+      setPhase("spinning");
       runSpinAnimation(faceBoxes, winner);
     } catch (err) {
       console.error("Detection error:", err);
       setErrorMessage("Face detection failed. Please try again.");
-      setPhase("camera");
       capturingRef.current = false;
-      await startCamera();
+      setPhase("camera");
+      await reconnectCamera();
     }
   }
 
@@ -223,6 +250,7 @@ export default function GamePage() {
     setWinnerIndex(-1);
     setErrorMessage("");
     setCameraError("");
+    setCanvasUrl("");
   }
 
   async function newRound() {
@@ -231,25 +259,29 @@ export default function GamePage() {
     setHighlightIndex(-1);
     setWinnerIndex(-1);
     setErrorMessage("");
+    setCanvasUrl("");
     setPhase("camera");
-    await startCamera();
+    await reconnectCamera();
   }
-
-  const canvasDisplayRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (!node || !canvasRef.current) return;
-    },
-    [phase]
-  );
 
   if (phase === "landing") {
-    return <LandingScreen modelsLoaded={modelsLoaded} progress={modelLoadProgress} cameraError={cameraError} onStart={startCamera} />;
+    return (
+      <LandingScreen
+        modelsLoaded={modelsLoaded}
+        progress={modelLoadProgress}
+        cameraError={cameraError}
+        onStart={startCamera}
+      />
+    );
   }
 
+  const showCamera = phase === "camera" || phase === "detecting";
+  const showOverlay = phase === "spinning" || phase === "winner";
+
   return (
-    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center">
-      {(phase === "camera" || phase === "detecting") && (
-        <CameraView
+    <div className="fixed inset-0 bg-black flex flex-col">
+      {showCamera && (
+        <CameraPhase
           videoRef={videoRef}
           phase={phase}
           errorMessage={errorMessage}
@@ -258,10 +290,10 @@ export default function GamePage() {
         />
       )}
 
-      {(phase === "spinning" || phase === "winner") && (
-        <DetectionOverlay
+      {showOverlay && (
+        <OverlayPhase
+          canvasUrl={canvasUrl}
           canvasRef={canvasRef}
-          canvasDisplayRef={canvasDisplayRef}
           faces={faces}
           highlightIndex={highlightIndex}
           winnerIndex={winnerIndex}
@@ -271,7 +303,6 @@ export default function GamePage() {
         />
       )}
 
-      <video ref={videoRef} className="hidden" playsInline muted />
       <canvas ref={canvasRef} className="hidden" />
     </div>
   );
@@ -336,7 +367,7 @@ function LandingScreen({
         >
           {modelsLoaded ? (
             <>
-              <Camera className="w-5 h-5 mr-2" />
+              <Crown className="w-5 h-5 mr-2" />
               Start Game
             </>
           ) : (
@@ -350,7 +381,7 @@ function LandingScreen({
         <div className="flex items-center gap-6 text-xs text-white/30">
           <div className="flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5" />
-            <span>1–10 players</span>
+            <span>1-10 players</span>
           </div>
           <div className="flex items-center gap-1.5">
             <Crown className="w-3.5 h-3.5" />
@@ -362,7 +393,7 @@ function LandingScreen({
   );
 }
 
-function CameraView({
+function CameraPhase({
   videoRef,
   phase,
   errorMessage,
@@ -375,30 +406,8 @@ function CameraView({
   onCapture: () => void;
   onBack: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
-
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-
-    function updateDimensions() {
-      if (video && video.videoWidth > 0) {
-        setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
-      }
-    }
-
-    video.addEventListener("loadedmetadata", updateDimensions);
-    const interval = setInterval(updateDimensions, 200);
-
-    return () => {
-      video.removeEventListener("loadedmetadata", updateDimensions);
-      clearInterval(interval);
-    };
-  }, [videoRef]);
-
   return (
-    <div className="fixed inset-0 bg-black flex flex-col">
+    <>
       <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
         <Button
           data-testid="button-back"
@@ -413,7 +422,7 @@ function CameraView({
         <div className="w-9" />
       </div>
 
-      <div ref={containerRef} className="flex-1 relative flex items-center justify-center">
+      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
         <video
           ref={videoRef}
           className="max-w-full max-h-full object-contain"
@@ -455,13 +464,13 @@ function CameraView({
           </span>
         </button>
       </div>
-    </div>
+    </>
   );
 }
 
-function DetectionOverlay({
+function OverlayPhase({
+  canvasUrl,
   canvasRef,
-  canvasDisplayRef,
   faces,
   highlightIndex,
   winnerIndex,
@@ -469,8 +478,8 @@ function DetectionOverlay({
   onNewRound,
   onReset,
 }: {
+  canvasUrl: string;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  canvasDisplayRef: (node: HTMLDivElement | null) => void;
   faces: FaceBox[];
   highlightIndex: number;
   winnerIndex: number;
@@ -478,13 +487,13 @@ function DetectionOverlay({
   onNewRound: () => void;
   onReset: () => void;
 }) {
-  const displayRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [displaySize, setDisplaySize] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
 
   useEffect(() => {
     function updateSize() {
       const canvas = canvasRef.current;
-      const container = displayRef.current;
+      const container = containerRef.current;
       if (!canvas || !container) return;
 
       const containerW = container.clientWidth;
@@ -523,17 +532,9 @@ function DetectionOverlay({
     };
   }
 
-  const canvasUrl = canvasRef.current?.toDataURL() || "";
-
   return (
-    <div className="fixed inset-0 bg-black flex flex-col">
-      <div
-        ref={(node) => {
-          (displayRef as any).current = node;
-          canvasDisplayRef(node);
-        }}
-        className="flex-1 relative"
-      >
+    <>
+      <div ref={containerRef} className="flex-1 relative">
         {canvasUrl && (
           <img
             src={canvasUrl}
@@ -627,7 +628,7 @@ function DetectionOverlay({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 
