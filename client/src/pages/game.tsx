@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import * as faceapi from "face-api.js";
 import { Button } from "@/components/ui/button";
-import { Shield, Crown, RotateCcw, Users, Loader2 } from "lucide-react";
+import { Shield, Crown, RotateCcw, Users, Loader2, Upload } from "lucide-react";
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
 
@@ -29,6 +29,7 @@ export default function GamePage() {
   const animFrameRef = useRef<number>(0);
   const capturingRef = useRef(false);
   const pendingStreamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadModels();
@@ -69,17 +70,17 @@ export default function GamePage() {
       });
       streamRef.current = stream;
       pendingStreamRef.current = stream;
-      setPhase("camera");
     } catch (err: any) {
       console.error("Camera error:", err);
       if (err.name === "NotAllowedError") {
-        setCameraError("Camera access was denied. Please allow camera access in your browser settings and try again.");
+        setCameraError("Camera access was denied. You can still upload a photo.");
       } else if (err.name === "NotFoundError") {
-        setCameraError("No camera found on this device.");
+        setCameraError("No camera found. You can still upload a photo.");
       } else {
-        setCameraError("Could not access camera. Please try again.");
+        setCameraError("Could not access camera. You can still upload a photo.");
       }
     }
+    setPhase("camera");
   }
 
   async function reconnectCamera() {
@@ -113,6 +114,49 @@ export default function GamePage() {
     }
   }
 
+  async function runDetection() {
+    const canvas = canvasRef.current!;
+    setCanvasUrl(canvas.toDataURL());
+
+    try {
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 416,
+        scoreThreshold: 0.5,
+      });
+      const detections = await faceapi.detectAllFaces(canvas, options);
+
+      if (detections.length === 0) {
+        setErrorMessage("No faces found! Try a different photo or get closer together.");
+        capturingRef.current = false;
+        setCanvasUrl("");
+        setPhase("camera");
+        await reconnectCamera();
+        return;
+      }
+
+      const faceBoxes: FaceBox[] = detections.map((d) => ({
+        x: d.box.x,
+        y: d.box.y,
+        width: d.box.width,
+        height: d.box.height,
+      }));
+
+      setFaces(faceBoxes);
+      const winner = Math.floor(Math.random() * faceBoxes.length);
+      setWinnerIndex(winner);
+      capturingRef.current = false;
+      setPhase("spinning");
+      runSpinAnimation(faceBoxes, winner);
+    } catch (err) {
+      console.error("Detection error:", err);
+      setErrorMessage("Face detection failed. Please try again.");
+      capturingRef.current = false;
+      setCanvasUrl("");
+      setPhase("camera");
+      await reconnectCamera();
+    }
+  }
+
   async function captureAndDetect() {
     if (!videoRef.current || !canvasRef.current) return;
     if (capturingRef.current) return;
@@ -132,42 +176,40 @@ export default function GamePage() {
     ctx.restore();
 
     stopCamera();
+    await runDetection();
+  }
 
-    try {
-      const options = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 416,
-        scoreThreshold: 0.5,
-      });
-      const detections = await faceapi.detectAllFaces(canvas, options);
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !canvasRef.current) return;
+    if (capturingRef.current) return;
+    capturingRef.current = true;
 
-      if (detections.length === 0) {
-        setErrorMessage("No faces found! Get closer together and try again.");
-        capturingRef.current = false;
-        setPhase("camera");
-        await reconnectCamera();
-        return;
-      }
+    setPhase("detecting");
+    setErrorMessage("");
+    stopCamera();
 
-      const faceBoxes: FaceBox[] = detections.map((d) => ({
-        x: d.box.x,
-        y: d.box.y,
-        width: d.box.width,
-        height: d.box.height,
-      }));
-
-      setCanvasUrl(canvas.toDataURL());
-      setFaces(faceBoxes);
-      const winner = Math.floor(Math.random() * faceBoxes.length);
-      setWinnerIndex(winner);
+    const img = new Image();
+    img.onload = async () => {
+      const canvas = canvasRef.current!;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      URL.revokeObjectURL(img.src);
+      await runDetection();
+    };
+    img.onerror = () => {
+      setErrorMessage("Could not load that image. Try a different one.");
       capturingRef.current = false;
-      setPhase("spinning");
-      runSpinAnimation(faceBoxes, winner);
-    } catch (err) {
-      console.error("Detection error:", err);
-      setErrorMessage("Face detection failed. Please try again.");
-      capturingRef.current = false;
+      setCanvasUrl("");
       setPhase("camera");
-      await reconnectCamera();
+      reconnectCamera();
+    };
+    img.src = URL.createObjectURL(file);
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   }
 
@@ -275,7 +317,8 @@ export default function GamePage() {
     );
   }
 
-  const showCamera = phase === "camera" || phase === "detecting";
+  const showCamera = phase === "camera";
+  const showDetecting = phase === "detecting";
   const showOverlay = phase === "spinning" || phase === "winner";
 
   return (
@@ -283,11 +326,18 @@ export default function GamePage() {
       {showCamera && (
         <CameraPhase
           videoRef={videoRef}
+          fileInputRef={fileInputRef}
           phase={phase}
           errorMessage={errorMessage}
+          cameraError={cameraError}
           onCapture={captureAndDetect}
+          onUpload={handleFileUpload}
           onBack={resetGame}
         />
+      )}
+
+      {showDetecting && (
+        <DetectingPhase canvasUrl={canvasUrl} onBack={resetGame} />
       )}
 
       {showOverlay && (
@@ -395,17 +445,25 @@ function LandingScreen({
 
 function CameraPhase({
   videoRef,
+  fileInputRef,
   phase,
   errorMessage,
+  cameraError,
   onCapture,
+  onUpload,
   onBack,
 }: {
   videoRef: React.RefObject<HTMLVideoElement>;
+  fileInputRef: React.RefObject<HTMLInputElement>;
   phase: GamePhase;
   errorMessage: string;
+  cameraError: string;
   onCapture: () => void;
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBack: () => void;
 }) {
+  const hasCamera = !cameraError;
+
   return (
     <>
       <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
@@ -418,26 +476,39 @@ function CameraPhase({
         >
           <RotateCcw className="w-5 h-5" />
         </Button>
-        <span className="text-white/70 text-sm font-medium">Align your group</span>
+        <span className="text-white/70 text-sm font-medium">
+          {hasCamera ? "Align your group" : "Upload a group photo"}
+        </span>
         <div className="w-9" />
       </div>
 
       <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        <video
-          ref={videoRef}
-          className="max-w-full max-h-full object-contain"
-          playsInline
-          muted
-          autoPlay
-          style={{ transform: "scaleX(-1)" }}
-        />
+        {hasCamera ? (
+          <video
+            ref={videoRef}
+            className="max-w-full max-h-full object-contain"
+            playsInline
+            muted
+            autoPlay
+            style={{ transform: "scaleX(-1)" }}
+          />
+        ) : (
+          <div className="flex flex-col items-center gap-4 text-center px-6">
+            <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+              <Upload className="w-8 h-8 text-white/40" />
+            </div>
+            <p className="text-white/40 text-sm max-w-xs">{cameraError}</p>
+          </div>
+        )}
 
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-400/50 rounded-tl-lg m-4" />
-          <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-400/50 rounded-tr-lg m-4" />
-          <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-400/50 rounded-bl-lg m-4" />
-          <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-400/50 rounded-br-lg m-4" />
-        </div>
+        {hasCamera && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-400/50 rounded-tl-lg m-4" />
+            <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-400/50 rounded-tr-lg m-4" />
+            <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-400/50 rounded-bl-lg m-4" />
+            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-400/50 rounded-br-lg m-4" />
+          </div>
+        )}
 
         {errorMessage && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-md text-sm font-medium shadow-lg max-w-xs text-center z-20">
@@ -446,23 +517,107 @@ function CameraPhase({
         )}
       </div>
 
-      <div className="p-6 pb-8 flex justify-center bg-gradient-to-t from-black via-black/80 to-transparent">
-        <button
-          data-testid="button-capture"
-          onClick={onCapture}
-          disabled={phase === "detecting"}
-          className="group relative w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+      <div className="p-6 pb-8 flex items-end justify-center gap-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={onUpload}
+          className="hidden"
+          data-testid="input-file-upload"
+        />
+
+        {hasCamera ? (
+          <>
+            <button
+              data-testid="button-upload-photo"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center gap-2 text-white/50 transition-colors hover:text-white/80"
+            >
+              <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center transition-colors hover:bg-white/20">
+                <Upload className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-medium">Upload</span>
+            </button>
+
+            <div className="flex flex-col items-center">
+              <button
+                data-testid="button-capture"
+                onClick={onCapture}
+                disabled={phase === "detecting"}
+                className="group relative w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+              >
+                <div className="absolute inset-1 rounded-full border-2 border-black/20" />
+                <Crown className="w-8 h-8 text-black" />
+              </button>
+              <span className="mt-2 text-xs text-white/50 font-medium">Crown the King</span>
+            </div>
+
+            <div className="w-12" />
+          </>
+        ) : (
+          <button
+            data-testid="button-upload-photo"
+            onClick={() => fileInputRef.current?.click()}
+            className="group relative w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95"
+          >
+            <div className="absolute inset-1 rounded-full border-2 border-black/20" />
+            <Upload className="w-8 h-8 text-black" />
+            <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-white/50 whitespace-nowrap font-medium">
+              Upload Photo
+            </span>
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
+function DetectingPhase({
+  canvasUrl,
+  onBack,
+}: {
+  canvasUrl: string;
+  onBack: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
+        <Button
+          data-testid="button-back-detecting"
+          variant="ghost"
+          size="icon"
+          onClick={onBack}
+          className="text-white/70"
         >
-          <div className="absolute inset-1 rounded-full border-2 border-black/20" />
-          {phase === "detecting" ? (
-            <Loader2 className="w-8 h-8 text-black animate-spin" />
-          ) : (
-            <Crown className="w-8 h-8 text-black" />
-          )}
-          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-white/50 whitespace-nowrap font-medium">
-            {phase === "detecting" ? "Scanning..." : "Crown the King"}
-          </span>
-        </button>
+          <RotateCcw className="w-5 h-5" />
+        </Button>
+        <span className="text-white/70 text-sm font-medium">Scanning faces...</span>
+        <div className="w-9" />
+      </div>
+
+      <div className="flex-1 relative flex items-center justify-center">
+        {canvasUrl && (
+          <img
+            src={canvasUrl}
+            alt="Captured photo"
+            className="max-w-full max-h-full object-contain"
+          />
+        )}
+
+        <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full border-2 border-cyan-400/30 flex items-center justify-center">
+                <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
+              </div>
+              <div className="absolute inset-0 rounded-full border-2 border-cyan-400/20 animate-ping" />
+            </div>
+            <span className="text-cyan-400 text-sm font-semibold tracking-wide">
+              Detecting faces...
+            </span>
+          </div>
+        </div>
       </div>
     </>
   );
