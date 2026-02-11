@@ -369,7 +369,7 @@ function CameraView({
   onCapture,
   onBack,
 }: {
-  videoRef: React.RefObject<HTMLVideoElement | null>;
+  videoRef: React.RefObject<HTMLVideoElement>;
   phase: GamePhase;
   errorMessage: string;
   onCapture: () => void;
