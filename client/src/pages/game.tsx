@@ -1,0 +1,656 @@
+import { useState, useRef, useEffect, useCallback } from "react";
+import * as faceapi from "face-api.js";
+import { Button } from "@/components/ui/button";
+import { Shield, Crown, Camera, RotateCcw, Users, Loader2 } from "lucide-react";
+
+type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
+
+interface FaceBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export default function GamePage() {
+  const [phase, setPhase] = useState<GamePhase>("landing");
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelLoadProgress, setModelLoadProgress] = useState(0);
+  const [faces, setFaces] = useState<FaceBox[]>([]);
+  const [highlightIndex, setHighlightIndex] = useState(-1);
+  const [winnerIndex, setWinnerIndex] = useState(-1);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [cameraError, setCameraError] = useState("");
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number>(0);
+  const capturingRef = useRef(false);
+
+  useEffect(() => {
+    loadModels();
+    return () => {
+      stopCamera();
+      cancelPendingAnimation();
+    };
+  }, []);
+
+  async function loadModels() {
+    try {
+      setModelLoadProgress(30);
+      await faceapi.nets.tinyFaceDetector.loadFromUri("/models");
+      setModelLoadProgress(100);
+      setModelsLoaded(true);
+    } catch (err) {
+      console.error("Failed to load face detection models:", err);
+      setModelLoadProgress(0);
+    }
+  }
+
+  async function startCamera() {
+    setCameraError("");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setPhase("camera");
+    } catch (err: any) {
+      console.error("Camera error:", err);
+      if (err.name === "NotAllowedError") {
+        setCameraError("Camera access was denied. Please allow camera access in your browser settings and try again.");
+      } else if (err.name === "NotFoundError") {
+        setCameraError("No camera found on this device.");
+      } else {
+        setCameraError("Could not access camera. Please try again.");
+      }
+    }
+  }
+
+  function stopCamera() {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+  }
+
+  function cancelPendingAnimation() {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = 0;
+    }
+  }
+
+  async function captureAndDetect() {
+    if (!videoRef.current || !canvasRef.current) return;
+    if (capturingRef.current) return;
+    capturingRef.current = true;
+
+    setPhase("detecting");
+    setErrorMessage("");
+
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d")!;
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0);
+    ctx.restore();
+
+    stopCamera();
+
+    try {
+      const options = new faceapi.TinyFaceDetectorOptions({
+        inputSize: 416,
+        scoreThreshold: 0.5,
+      });
+      const detections = await faceapi.detectAllFaces(canvas, options);
+
+      if (detections.length === 0) {
+        setErrorMessage("No faces found! Get closer together and try again.");
+        setPhase("camera");
+        capturingRef.current = false;
+        await startCamera();
+        return;
+      }
+
+      const faceBoxes: FaceBox[] = detections.map((d) => ({
+        x: d.box.x,
+        y: d.box.y,
+        width: d.box.width,
+        height: d.box.height,
+      }));
+
+      setFaces(faceBoxes);
+      const winner = Math.floor(Math.random() * faceBoxes.length);
+      setWinnerIndex(winner);
+      setPhase("spinning");
+      capturingRef.current = false;
+      runSpinAnimation(faceBoxes, winner);
+    } catch (err) {
+      console.error("Detection error:", err);
+      setErrorMessage("Face detection failed. Please try again.");
+      setPhase("camera");
+      capturingRef.current = false;
+      await startCamera();
+    }
+  }
+
+  function runSpinAnimation(faceBoxes: FaceBox[], winner: number) {
+    cancelPendingAnimation();
+
+    const schedule = buildSpinSchedule(faceBoxes.length, winner);
+    const startTime = performance.now();
+    let stepIndex = 0;
+
+    function tick(now: number) {
+      const elapsed = now - startTime;
+
+      while (stepIndex < schedule.length && elapsed >= schedule[stepIndex].time) {
+        setHighlightIndex(schedule[stepIndex].faceIndex);
+        stepIndex++;
+      }
+
+      if (stepIndex >= schedule.length) {
+        setHighlightIndex(winner);
+        setPhase("winner");
+        return;
+      }
+
+      animFrameRef.current = requestAnimationFrame(tick);
+    }
+
+    animFrameRef.current = requestAnimationFrame(tick);
+  }
+
+  function buildSpinSchedule(faceCount: number, winner: number) {
+    const totalDuration = 4000;
+    const phase1End = 1500;
+    const steps: { time: number; faceIndex: number }[] = [];
+
+    let t = 0;
+    let interval = 50;
+    let idx = 0;
+
+    while (t < phase1End) {
+      steps.push({ time: t, faceIndex: idx % faceCount });
+      idx++;
+      t += interval;
+    }
+
+    while (t < totalDuration - 500) {
+      interval *= 1.2;
+      steps.push({ time: t, faceIndex: idx % faceCount });
+      idx++;
+      t += interval;
+    }
+
+    const lastFace = steps.length > 0 ? steps[steps.length - 1].faceIndex : 0;
+    let stepsToWinner = ((winner - lastFace) % faceCount + faceCount) % faceCount;
+    if (stepsToWinner === 0) stepsToWinner = faceCount;
+
+    const remainingTime = totalDuration - (steps.length > 0 ? steps[steps.length - 1].time + interval : 0);
+    const baseInterval = remainingTime / stepsToWinner;
+
+    let currentTime = steps.length > 0 ? steps[steps.length - 1].time + interval : 0;
+    let currentFace = (lastFace + 1) % faceCount;
+
+    for (let i = 0; i < stepsToWinner; i++) {
+      const progress = i / stepsToWinner;
+      const easeInterval = baseInterval * (0.6 + 0.8 * progress);
+      steps.push({ time: currentTime, faceIndex: currentFace });
+      currentFace = (currentFace + 1) % faceCount;
+      currentTime += easeInterval;
+    }
+
+    return steps;
+  }
+
+  function resetGame() {
+    cancelPendingAnimation();
+    stopCamera();
+    setPhase("landing");
+    setFaces([]);
+    setHighlightIndex(-1);
+    setWinnerIndex(-1);
+    setErrorMessage("");
+    setCameraError("");
+  }
+
+  async function newRound() {
+    cancelPendingAnimation();
+    setFaces([]);
+    setHighlightIndex(-1);
+    setWinnerIndex(-1);
+    setErrorMessage("");
+    setPhase("camera");
+    await startCamera();
+  }
+
+  const canvasDisplayRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (!node || !canvasRef.current) return;
+    },
+    [phase]
+  );
+
+  if (phase === "landing") {
+    return <LandingScreen modelsLoaded={modelsLoaded} progress={modelLoadProgress} cameraError={cameraError} onStart={startCamera} />;
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black flex flex-col items-center justify-center">
+      {(phase === "camera" || phase === "detecting") && (
+        <CameraView
+          videoRef={videoRef}
+          phase={phase}
+          errorMessage={errorMessage}
+          onCapture={captureAndDetect}
+          onBack={resetGame}
+        />
+      )}
+
+      {(phase === "spinning" || phase === "winner") && (
+        <DetectionOverlay
+          canvasRef={canvasRef}
+          canvasDisplayRef={canvasDisplayRef}
+          faces={faces}
+          highlightIndex={highlightIndex}
+          winnerIndex={winnerIndex}
+          isWinner={phase === "winner"}
+          onNewRound={newRound}
+          onReset={resetGame}
+        />
+      )}
+
+      <video ref={videoRef} className="hidden" playsInline muted />
+      <canvas ref={canvasRef} className="hidden" />
+    </div>
+  );
+}
+
+function LandingScreen({
+  modelsLoaded,
+  progress,
+  cameraError,
+  onStart,
+}: {
+  modelsLoaded: boolean;
+  progress: number;
+  cameraError: string;
+  onStart: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-[#0a0a1a] via-[#0f0f2e] to-[#0a0a1a] flex flex-col items-center justify-center px-6 overflow-hidden">
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "1s" }} />
+      </div>
+
+      <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400/20 to-amber-600/10 flex items-center justify-center border border-amber-500/20">
+            <Shield className="w-12 h-12 text-amber-400/80" />
+          </div>
+          <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+            Who Goes First?
+          </h1>
+          <p className="text-lg text-white/50 font-light leading-relaxed">
+            Point your camera at the group. AI picks who starts — no dice needed.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-white/5 border border-white/10">
+          <Shield className="w-4 h-4 text-green-400 shrink-0" />
+          <span className="text-sm text-white/60">
+            100% private — nothing leaves your device
+          </span>
+        </div>
+
+        {cameraError && (
+          <div className="px-4 py-3 rounded-md bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+            {cameraError}
+          </div>
+        )}
+
+        <Button
+          data-testid="button-start-game"
+          onClick={onStart}
+          disabled={!modelsLoaded}
+          className="relative bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold text-lg px-8 border-0 no-default-hover-elevate no-default-active-elevate transition-all duration-200 hover:from-amber-400 hover:to-amber-500 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:hover:scale-100"
+          size="lg"
+        >
+          {modelsLoaded ? (
+            <>
+              <Camera className="w-5 h-5 mr-2" />
+              Start Game
+            </>
+          ) : (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Loading AI ({progress}%)
+            </>
+          )}
+        </Button>
+
+        <div className="flex items-center gap-6 text-xs text-white/30">
+          <div className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5" />
+            <span>1–10 players</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Crown className="w-3.5 h-3.5" />
+            <span>~10 seconds</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CameraView({
+  videoRef,
+  phase,
+  errorMessage,
+  onCapture,
+  onBack,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  phase: GamePhase;
+  errorMessage: string;
+  onCapture: () => void;
+  onBack: () => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [videoDimensions, setVideoDimensions] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    function updateDimensions() {
+      if (video && video.videoWidth > 0) {
+        setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+      }
+    }
+
+    video.addEventListener("loadedmetadata", updateDimensions);
+    const interval = setInterval(updateDimensions, 200);
+
+    return () => {
+      video.removeEventListener("loadedmetadata", updateDimensions);
+      clearInterval(interval);
+    };
+  }, [videoRef]);
+
+  return (
+    <div className="fixed inset-0 bg-black flex flex-col">
+      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
+        <Button
+          data-testid="button-back"
+          variant="ghost"
+          size="icon"
+          onClick={onBack}
+          className="text-white/70"
+        >
+          <RotateCcw className="w-5 h-5" />
+        </Button>
+        <span className="text-white/70 text-sm font-medium">Align your group</span>
+        <div className="w-9" />
+      </div>
+
+      <div ref={containerRef} className="flex-1 relative flex items-center justify-center">
+        <video
+          ref={videoRef}
+          className="max-w-full max-h-full object-contain"
+          playsInline
+          muted
+          autoPlay
+          style={{ transform: "scaleX(-1)" }}
+        />
+
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-400/50 rounded-tl-lg m-4" />
+          <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-400/50 rounded-tr-lg m-4" />
+          <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-400/50 rounded-bl-lg m-4" />
+          <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-400/50 rounded-br-lg m-4" />
+        </div>
+
+        {errorMessage && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-md text-sm font-medium shadow-lg max-w-xs text-center z-20">
+            {errorMessage}
+          </div>
+        )}
+      </div>
+
+      <div className="p-6 pb-8 flex justify-center bg-gradient-to-t from-black via-black/80 to-transparent">
+        <button
+          data-testid="button-capture"
+          onClick={onCapture}
+          disabled={phase === "detecting"}
+          className="group relative w-20 h-20 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:hover:scale-100"
+        >
+          <div className="absolute inset-1 rounded-full border-2 border-black/20" />
+          {phase === "detecting" ? (
+            <Loader2 className="w-8 h-8 text-black animate-spin" />
+          ) : (
+            <Crown className="w-8 h-8 text-black" />
+          )}
+          <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-white/50 whitespace-nowrap font-medium">
+            {phase === "detecting" ? "Scanning..." : "Crown the King"}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetectionOverlay({
+  canvasRef,
+  canvasDisplayRef,
+  faces,
+  highlightIndex,
+  winnerIndex,
+  isWinner,
+  onNewRound,
+  onReset,
+}: {
+  canvasRef: React.RefObject<HTMLCanvasElement | null>;
+  canvasDisplayRef: (node: HTMLDivElement | null) => void;
+  faces: FaceBox[];
+  highlightIndex: number;
+  winnerIndex: number;
+  isWinner: boolean;
+  onNewRound: () => void;
+  onReset: () => void;
+}) {
+  const displayRef = useRef<HTMLDivElement>(null);
+  const [displaySize, setDisplaySize] = useState({ width: 0, height: 0, offsetX: 0, offsetY: 0 });
+
+  useEffect(() => {
+    function updateSize() {
+      const canvas = canvasRef.current;
+      const container = displayRef.current;
+      if (!canvas || !container) return;
+
+      const containerW = container.clientWidth;
+      const containerH = container.clientHeight;
+      const canvasW = canvas.width;
+      const canvasH = canvas.height;
+
+      if (canvasW === 0 || canvasH === 0) return;
+
+      const scale = Math.min(containerW / canvasW, containerH / canvasH);
+      const displayW = canvasW * scale;
+      const displayH = canvasH * scale;
+      const offsetX = (containerW - displayW) / 2;
+      const offsetY = (containerH - displayH) / 2;
+
+      setDisplaySize({ width: displayW, height: displayH, offsetX, offsetY });
+    }
+
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => window.removeEventListener("resize", updateSize);
+  }, [canvasRef]);
+
+  function scaleBox(face: FaceBox) {
+    const canvas = canvasRef.current;
+    if (!canvas || canvas.width === 0) return { left: 0, top: 0, width: 0, height: 0 };
+
+    const scaleX = displaySize.width / canvas.width;
+    const scaleY = displaySize.height / canvas.height;
+
+    return {
+      left: displaySize.offsetX + face.x * scaleX,
+      top: displaySize.offsetY + face.y * scaleY,
+      width: face.width * scaleX,
+      height: face.height * scaleY,
+    };
+  }
+
+  const canvasUrl = canvasRef.current?.toDataURL() || "";
+
+  return (
+    <div className="fixed inset-0 bg-black flex flex-col">
+      <div
+        ref={(node) => {
+          (displayRef as any).current = node;
+          canvasDisplayRef(node);
+        }}
+        className="flex-1 relative"
+      >
+        {canvasUrl && (
+          <img
+            src={canvasUrl}
+            alt="Captured frame"
+            className="absolute inset-0 w-full h-full object-contain"
+          />
+        )}
+
+        {isWinner && (
+          <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none" />
+        )}
+
+        {faces.map((face, i) => {
+          const box = scaleBox(face);
+          const isHighlighted = i === highlightIndex;
+          const isTheWinner = isWinner && i === winnerIndex;
+
+          return (
+            <div
+              key={i}
+              data-testid={`face-box-${i}`}
+              className="absolute z-20 transition-all duration-75"
+              style={{
+                left: box.left,
+                top: box.top,
+                width: box.width,
+                height: box.height,
+              }}
+            >
+              <div
+                className={`absolute inset-0 rounded-md border-2 transition-all duration-75 ${
+                  isTheWinner
+                    ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.6),0_0_60px_rgba(251,191,36,0.3)] animate-winner-glow"
+                    : isHighlighted
+                    ? "border-cyan-400 shadow-[0_0_20px_rgba(34,211,238,0.5)]"
+                    : "border-white/20"
+                }`}
+              />
+
+              {isTheWinner && (
+                <div
+                  className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full animate-crown-drop"
+                  style={{ width: box.width * 0.5 }}
+                >
+                  <CrownSVG />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {isWinner && (
+        <div className="absolute bottom-0 left-0 right-0 z-30 p-6 pb-8 bg-gradient-to-t from-black via-black/90 to-transparent">
+          <div className="flex flex-col items-center gap-5">
+            <div className="text-center">
+              <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-1 animate-fade-in">
+                The Chosen One
+              </p>
+              <p className="text-white/50 text-xs">Player {winnerIndex + 1} goes first!</p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                data-testid="button-new-round"
+                onClick={onNewRound}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold border-0 no-default-hover-elevate no-default-active-elevate hover:from-amber-400 hover:to-amber-500 transition-colors"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                New Round
+              </Button>
+              <Button
+                data-testid="button-reset"
+                variant="outline"
+                onClick={onReset}
+                className="border-white/20 text-white/70"
+              >
+                Back to Start
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!isWinner && (
+        <div className="absolute bottom-8 left-0 right-0 z-30 flex justify-center">
+          <div className="px-5 py-2.5 rounded-md bg-black/70 backdrop-blur-sm border border-cyan-400/30">
+            <span className="text-cyan-400 text-sm font-semibold tracking-wide animate-pulse">
+              Selecting...
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CrownSVG() {
+  return (
+    <svg viewBox="0 0 100 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
+      <path
+        d="M10 65 L20 25 L35 45 L50 10 L65 45 L80 25 L90 65Z"
+        fill="url(#crownGrad)"
+        stroke="#fbbf24"
+        strokeWidth="2"
+      />
+      <circle cx="20" cy="25" r="4" fill="#fbbf24" />
+      <circle cx="50" cy="10" r="5" fill="#fbbf24" />
+      <circle cx="80" cy="25" r="4" fill="#fbbf24" />
+      <rect x="10" y="62" width="80" height="8" rx="2" fill="url(#crownGrad)" stroke="#fbbf24" strokeWidth="1.5" />
+      <defs>
+        <linearGradient id="crownGrad" x1="10" y1="10" x2="90" y2="70" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#f59e0b" />
+          <stop offset="50%" stopColor="#fbbf24" />
+          <stop offset="100%" stopColor="#f59e0b" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}

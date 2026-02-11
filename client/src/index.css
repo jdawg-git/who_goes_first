@@ -43,9 +43,9 @@
   --chart-3: 15 85% 38%;
   --chart-4: 60 80% 35%;
   --chart-5: 25 75% 40%;
-  --font-sans: Open Sans, sans-serif;
+  --font-sans: Outfit, sans-serif;
   --font-serif: Georgia, serif;
-  --font-mono: Menlo, monospace;
+  --font-mono: Space Grotesk, monospace;
   --radius: .5rem;
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.00);
@@ -173,6 +173,47 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+}
+
+@keyframes winner-glow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(251,191,36,0.6), 0 0 60px rgba(251,191,36,0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(251,191,36,0.8), 0 0 90px rgba(251,191,36,0.4);
+  }
+}
+
+@keyframes crown-drop {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px) scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(4px) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-winner-glow {
+  animation: winner-glow 1.5s ease-in-out infinite;
+}
+
+.animate-crown-drop {
+  animation: crown-drop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
 }
 
 /**
