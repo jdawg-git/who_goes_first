@@ -241,12 +241,12 @@ export default function GamePage() {
   }
 
   function buildSpinSchedule(faceCount: number, winner: number) {
-    const totalDuration = 4000;
-    const phase1End = 1500;
+    const totalDuration = 5000;
+    const phase1End = 2000;
     const steps: { time: number; faceIndex: number }[] = [];
 
     let t = 0;
-    let interval = 50;
+    let interval = 200;
     let idx = 0;
 
     while (t < phase1End) {
@@ -255,8 +255,8 @@ export default function GamePage() {
       t += interval;
     }
 
-    while (t < totalDuration - 500) {
-      interval *= 1.2;
+    while (t < totalDuration - 800) {
+      interval *= 1.25;
       steps.push({ time: t, faceIndex: idx % faceCount });
       idx++;
       t += interval;
@@ -274,7 +274,7 @@ export default function GamePage() {
 
     for (let i = 0; i < stepsToWinner; i++) {
       const progress = i / stepsToWinner;
-      const easeInterval = baseInterval * (0.6 + 0.8 * progress);
+      const easeInterval = baseInterval * (0.5 + 1.0 * progress);
       steps.push({ time: currentTime, faceIndex: currentFace });
       currentFace = (currentFace + 1) % faceCount;
       currentTime += easeInterval;
@@ -707,20 +707,24 @@ function OverlayPhase({
           const isHighlighted = i === highlightIndex;
           const isTheWinner = isWinner && i === winnerIndex;
 
+          const size = Math.max(box.width, box.height) * 1.2;
+          const cx = box.left + box.width / 2;
+          const cy = box.top + box.height / 2;
+
           return (
             <div
               key={i}
               data-testid={`face-box-${i}`}
-              className="absolute z-20 transition-all duration-75"
+              className="absolute z-20 transition-all duration-150"
               style={{
-                left: box.left,
-                top: box.top,
-                width: box.width,
-                height: box.height,
+                left: cx - size / 2,
+                top: cy - size / 2,
+                width: size,
+                height: size,
               }}
             >
               <div
-                className={`absolute inset-0 rounded-md border-2 transition-all duration-75 ${
+                className={`absolute inset-0 rounded-full border-[3px] transition-all duration-150 ${
                   isTheWinner
                     ? "border-amber-400 shadow-[0_0_30px_rgba(251,191,36,0.6),0_0_60px_rgba(251,191,36,0.3)] animate-winner-glow"
                     : isHighlighted
@@ -732,7 +736,7 @@ function OverlayPhase({
               {isTheWinner && (
                 <div
                   className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full animate-crown-drop"
-                  style={{ width: box.width * 0.5 }}
+                  style={{ width: size * 0.5 }}
                 >
                   <CrownSVG />
                 </div>
