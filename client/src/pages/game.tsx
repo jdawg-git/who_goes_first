@@ -480,59 +480,57 @@ function CameraPhase({
   const hasCamera = !cameraError;
 
   return (
-    <>
-      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
+    <div className="absolute inset-0">
+      {hasCamera ? (
+        <video
+          ref={videoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          playsInline
+          muted
+          autoPlay
+          style={{ transform: "scaleX(-1)" }}
+        />
+      ) : (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center px-6">
+          <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+            <Upload className="w-8 h-8 text-white/40" />
+          </div>
+          <p className="text-white/40 text-sm max-w-xs">{cameraError}</p>
+        </div>
+      )}
+
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4">
         <Button
           data-testid="button-back"
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="text-white/70"
+          className="text-white/70 bg-black/30 backdrop-blur-sm"
         >
           <RotateCcw className="w-5 h-5" />
         </Button>
-        <span className="text-white/70 text-sm font-medium">
+        <span className="text-white/90 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-md">
           {hasCamera ? "Align your group" : "Upload a group photo"}
         </span>
         <div className="w-9" />
       </div>
 
-      <div className="flex-1 relative flex items-center justify-center overflow-hidden">
-        {hasCamera ? (
-          <video
-            ref={videoRef}
-            className="max-w-full max-h-full object-contain"
-            playsInline
-            muted
-            autoPlay
-            style={{ transform: "scaleX(-1)" }}
-          />
-        ) : (
-          <div className="flex flex-col items-center gap-4 text-center px-6">
-            <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-              <Upload className="w-8 h-8 text-white/40" />
-            </div>
-            <p className="text-white/40 text-sm max-w-xs">{cameraError}</p>
-          </div>
-        )}
+      {hasCamera && (
+        <div className="absolute inset-0 pointer-events-none z-10">
+          <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-400/50 rounded-tl-lg m-4" />
+          <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-400/50 rounded-tr-lg m-4" />
+          <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-400/50 rounded-bl-lg m-4" />
+          <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-400/50 rounded-br-lg m-4" />
+        </div>
+      )}
 
-        {hasCamera && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-0 w-16 h-16 border-t-2 border-l-2 border-amber-400/50 rounded-tl-lg m-4" />
-            <div className="absolute top-0 right-0 w-16 h-16 border-t-2 border-r-2 border-amber-400/50 rounded-tr-lg m-4" />
-            <div className="absolute bottom-0 left-0 w-16 h-16 border-b-2 border-l-2 border-amber-400/50 rounded-bl-lg m-4" />
-            <div className="absolute bottom-0 right-0 w-16 h-16 border-b-2 border-r-2 border-amber-400/50 rounded-br-lg m-4" />
-          </div>
-        )}
+      {errorMessage && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-md text-sm font-medium shadow-lg max-w-xs text-center z-30">
+          {errorMessage}
+        </div>
+      )}
 
-        {errorMessage && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-red-500/90 backdrop-blur-sm text-white px-6 py-3 rounded-md text-sm font-medium shadow-lg max-w-xs text-center z-20">
-            {errorMessage}
-          </div>
-        )}
-      </div>
-
-      <div className="p-6 pb-8 flex items-end justify-center gap-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+      <div className="absolute bottom-0 left-0 right-0 z-20 p-6 pb-8 flex items-end justify-center gap-6 bg-gradient-to-t from-black/80 via-black/40 to-transparent">
         <input
           ref={fileInputRef}
           type="file"
@@ -549,7 +547,7 @@ function CameraPhase({
               onClick={() => fileInputRef.current?.click()}
               className="flex flex-col items-center gap-2 text-white/50 transition-colors hover:text-white/80"
             >
-              <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center transition-colors hover:bg-white/20">
+              <div className="w-12 h-12 rounded-full bg-black/40 backdrop-blur-sm border border-white/20 flex items-center justify-center transition-colors hover:bg-black/60">
                 <Upload className="w-5 h-5" />
               </div>
               <span className="text-xs font-medium">Upload</span>
@@ -584,7 +582,7 @@ function CameraPhase({
           </button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -596,45 +594,45 @@ function DetectingPhase({
   onBack: () => void;
 }) {
   return (
-    <>
-      <div className="flex items-center justify-between p-4 bg-black/80 backdrop-blur-sm z-10">
+    <div className="absolute inset-0">
+      {canvasUrl && (
+        <img
+          src={canvasUrl}
+          alt="Captured photo"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+
+      <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between p-4">
         <Button
           data-testid="button-back-detecting"
           variant="ghost"
           size="icon"
           onClick={onBack}
-          className="text-white/70"
+          className="text-white/70 bg-black/30 backdrop-blur-sm"
         >
           <RotateCcw className="w-5 h-5" />
         </Button>
-        <span className="text-white/70 text-sm font-medium">Scanning faces...</span>
+        <span className="text-white/90 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-md">
+          Scanning faces...
+        </span>
         <div className="w-9" />
       </div>
 
-      <div className="flex-1 relative flex items-center justify-center">
-        {canvasUrl && (
-          <img
-            src={canvasUrl}
-            alt="Captured photo"
-            className="max-w-full max-h-full object-contain"
-          />
-        )}
-
-        <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              <div className="w-16 h-16 rounded-full border-2 border-cyan-400/30 flex items-center justify-center">
-                <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
-              </div>
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-400/20 animate-ping" />
+      <div className="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none z-10">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-2 border-cyan-400/30 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-cyan-400 animate-spin" />
             </div>
-            <span className="text-cyan-400 text-sm font-semibold tracking-wide">
-              Detecting faces...
-            </span>
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-400/20 animate-ping" />
           </div>
+          <span className="text-cyan-400 text-sm font-semibold tracking-wide">
+            Detecting faces...
+          </span>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -673,7 +671,7 @@ function OverlayPhase({
 
       if (canvasW === 0 || canvasH === 0) return;
 
-      const scale = Math.min(containerW / canvasW, containerH / canvasH);
+      const scale = Math.max(containerW / canvasW, containerH / canvasH);
       const displayW = canvasW * scale;
       const displayH = canvasH * scale;
       const offsetX = (containerW - displayW) / 2;
@@ -704,12 +702,12 @@ function OverlayPhase({
 
   return (
     <>
-      <div ref={containerRef} className="flex-1 relative">
+      <div ref={containerRef} className="absolute inset-0 overflow-hidden">
         {canvasUrl && (
           <img
             src={canvasUrl}
             alt="Captured frame"
-            className="absolute inset-0 w-full h-full object-contain"
+            className="absolute inset-0 w-full h-full object-cover"
           />
         )}
 

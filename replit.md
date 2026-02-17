@@ -24,7 +24,10 @@ A "magic mirror" style web application that captures a group photo and uses on-d
 - Fonts: Outfit (sans) + Space Grotesk (mono)
 - Gold/amber accent for winner crown and primary actions
 - Cyan accent for spin-down highlighting
-- 4-second deterministic spin animation with 3 phases: Sprint (50ms), Brake (1.2x), Final Stop
+- 5-second spin animation: 3+ full sequential cycles with quadratic easing, guaranteed to land on pre-chosen winner
+- Full-screen photo/video layout: object-cover fills viewport, controls overlaid with backdrop-blur
+- Confetti effect (canvas-confetti) fires on winner selection
+- "Player N" labels displayed under each face circle during spin and winner phases
 
 ## User Preferences
 - Privacy-first: zero data transmission
