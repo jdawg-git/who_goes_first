@@ -242,42 +242,32 @@ export default function GamePage() {
 
   function buildSpinSchedule(faceCount: number, winner: number) {
     const totalDuration = 5000;
-    const phase1End = 2000;
+    const minInterval = 180;
+    const maxInterval = 900;
+
+    const fullCycles = 3;
+    const baseSteps = fullCycles * faceCount;
+    const lastFaceOfBase = (baseSteps - 1) % faceCount;
+    const extraToWinner = ((winner - lastFaceOfBase + faceCount) % faceCount);
+    const totalSteps = baseSteps + (extraToWinner === 0 ? faceCount : extraToWinner);
+
     const steps: { time: number; faceIndex: number }[] = [];
-
     let t = 0;
-    let interval = 200;
-    let idx = 0;
 
-    while (t < phase1End) {
-      steps.push({ time: t, faceIndex: idx % faceCount });
-      idx++;
+    for (let i = 0; i < totalSteps; i++) {
+      const progress = i / (totalSteps - 1);
+      const eased = progress * progress;
+      const interval = minInterval + (maxInterval - minInterval) * eased;
+
+      steps.push({ time: t, faceIndex: i % faceCount });
       t += interval;
     }
 
-    while (t < totalDuration - 800) {
-      interval *= 1.25;
-      steps.push({ time: t, faceIndex: idx % faceCount });
-      idx++;
-      t += interval;
-    }
+    const rawDuration = t - (minInterval + (maxInterval - minInterval) * 1);
+    const scale = totalDuration / rawDuration;
 
-    const lastFace = steps.length > 0 ? steps[steps.length - 1].faceIndex : 0;
-    let stepsToWinner = ((winner - lastFace) % faceCount + faceCount) % faceCount;
-    if (stepsToWinner === 0) stepsToWinner = faceCount;
-
-    const remainingTime = totalDuration - (steps.length > 0 ? steps[steps.length - 1].time + interval : 0);
-    const baseInterval = remainingTime / stepsToWinner;
-
-    let currentTime = steps.length > 0 ? steps[steps.length - 1].time + interval : 0;
-    let currentFace = (lastFace + 1) % faceCount;
-
-    for (let i = 0; i < stepsToWinner; i++) {
-      const progress = i / stepsToWinner;
-      const easeInterval = baseInterval * (0.5 + 1.0 * progress);
-      steps.push({ time: currentTime, faceIndex: currentFace });
-      currentFace = (currentFace + 1) % faceCount;
-      currentTime += easeInterval;
+    for (let i = 0; i < steps.length; i++) {
+      steps[i].time *= scale;
     }
 
     return steps;
