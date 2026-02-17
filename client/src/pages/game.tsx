@@ -484,7 +484,7 @@ function CameraPhase({
       {hasCamera ? (
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
           playsInline
           muted
           autoPlay
@@ -599,7 +599,7 @@ function DetectingPhase({
         <img
           src={canvasUrl}
           alt="Captured photo"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 w-full h-full object-contain"
         />
       )}
 
@@ -671,7 +671,7 @@ function OverlayPhase({
 
       if (canvasW === 0 || canvasH === 0) return;
 
-      const scale = Math.max(containerW / canvasW, containerH / canvasH);
+      const scale = Math.min(containerW / canvasW, containerH / canvasH);
       const displayW = canvasW * scale;
       const displayH = canvasH * scale;
       const offsetX = (containerW - displayW) / 2;
@@ -707,7 +707,7 @@ function OverlayPhase({
           <img
             src={canvasUrl}
             alt="Captured frame"
-            className="absolute inset-0 w-full h-full object-cover"
+            className="absolute inset-0 w-full h-full object-contain"
           />
         )}
 

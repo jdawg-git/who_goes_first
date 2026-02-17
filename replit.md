@@ -25,7 +25,7 @@ A "magic mirror" style web application that captures a group photo and uses on-d
 - Gold/amber accent for winner crown and primary actions
 - Cyan accent for spin-down highlighting
 - 5-second spin animation: 3+ full sequential cycles with quadratic easing, guaranteed to land on pre-chosen winner
-- Full-screen photo/video layout: object-cover fills viewport, controls overlaid with backdrop-blur
+- Full-screen photo/video layout: object-contain preserves full image, controls overlaid with backdrop-blur
 - Confetti effect (canvas-confetti) fires on winner selection
 - "Player N" labels displayed under each face circle during spin and winner phases
 
