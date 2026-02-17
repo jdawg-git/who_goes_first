@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import * as faceapi from "face-api.js";
+import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, Users, Loader2, Upload } from "lucide-react";
 
@@ -231,6 +232,7 @@ export default function GamePage() {
       if (stepIndex >= schedule.length) {
         setHighlightIndex(winner);
         setPhase("winner");
+        fireConfetti();
         return;
       }
 
@@ -271,6 +273,30 @@ export default function GamePage() {
     }
 
     return steps;
+  }
+
+  function fireConfetti() {
+    const duration = 2000;
+    const end = Date.now() + duration;
+    const colors = ["#fbbf24", "#f59e0b", "#22d3ee", "#ffffff"];
+
+    (function frame() {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0, y: 0.7 },
+        colors,
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1, y: 0.7 },
+        colors,
+      });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
   }
 
   function resetGame() {
@@ -730,6 +756,20 @@ function OverlayPhase({
                   <CrownSVG />
                 </div>
               )}
+
+              <div
+                data-testid={`player-label-${i}`}
+                className={`absolute left-1/2 -translate-x-1/2 text-center whitespace-nowrap px-2 py-0.5 rounded-md text-xs font-semibold ${
+                  isTheWinner
+                    ? "bg-amber-500/90 text-black"
+                    : isHighlighted
+                    ? "bg-cyan-500/90 text-black"
+                    : "bg-black/60 text-white/80"
+                }`}
+                style={{ top: size + 6 }}
+              >
+                Player {i + 1}
+              </div>
             </div>
           );
         })}
