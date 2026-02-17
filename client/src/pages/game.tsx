@@ -120,8 +120,8 @@ export default function GamePage() {
 
     try {
       const options = new faceapi.TinyFaceDetectorOptions({
-        inputSize: 416,
-        scoreThreshold: 0.5,
+        inputSize: 608,
+        scoreThreshold: 0.35,
       });
       const detections = await faceapi.detectAllFaces(canvas, options);
 
