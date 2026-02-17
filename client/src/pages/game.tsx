@@ -735,8 +735,8 @@ function OverlayPhase({
 
               {isTheWinner && (
                 <div
-                  className="absolute -top-2 left-1/2 -translate-x-1/2 -translate-y-full animate-crown-drop"
-                  style={{ width: size * 0.5 }}
+                  className="absolute left-1/2 -translate-x-1/2 animate-crown-drop"
+                  style={{ width: size * 0.45, top: -(size * 0.3) }}
                 >
                   <CrownSVG />
                 </div>
