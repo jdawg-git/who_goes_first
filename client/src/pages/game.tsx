@@ -295,15 +295,14 @@ export default function GamePage() {
     setCanvasUrl("");
   }
 
-  async function newRound() {
+  function respin() {
     cancelPendingAnimation();
-    setFaces([]);
     setHighlightIndex(-1);
     setWinnerIndex(-1);
-    setErrorMessage("");
-    setCanvasUrl("");
-    setPhase("camera");
-    await reconnectCamera();
+    const winner = Math.floor(Math.random() * faces.length);
+    setWinnerIndex(winner);
+    setPhase("spinning");
+    runSpinAnimation(faces, winner);
   }
 
   if (phase === "landing") {
@@ -348,7 +347,7 @@ export default function GamePage() {
           highlightIndex={highlightIndex}
           winnerIndex={winnerIndex}
           isWinner={phase === "winner"}
-          onNewRound={newRound}
+          onRespin={respin}
           onReset={resetGame}
         />
       )}
@@ -630,7 +629,7 @@ function OverlayPhase({
   highlightIndex,
   winnerIndex,
   isWinner,
-  onNewRound,
+  onRespin,
   onReset,
 }: {
   canvasUrl: string;
@@ -639,7 +638,7 @@ function OverlayPhase({
   highlightIndex: number;
   winnerIndex: number;
   isWinner: boolean;
-  onNewRound: () => void;
+  onRespin: () => void;
   onReset: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -758,12 +757,12 @@ function OverlayPhase({
 
             <div className="flex gap-3">
               <Button
-                data-testid="button-new-round"
-                onClick={onNewRound}
+                data-testid="button-respin"
+                onClick={onRespin}
                 className="bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold border-0 no-default-hover-elevate no-default-active-elevate hover:from-amber-400 hover:to-amber-500 transition-colors"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                New Round
+                Respin
               </Button>
               <Button
                 data-testid="button-reset"
