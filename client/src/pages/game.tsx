@@ -3,6 +3,7 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload } from "lucide-react";
+import logoImg from "@assets/Crop_image_project_1771381513726.png";
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
 
@@ -397,12 +398,7 @@ function LandingScreen({
 
       <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
         <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-amber-400/20 to-amber-600/10 flex items-center justify-center border border-amber-500/20">
-            <Shield className="w-12 h-12 text-amber-400/80" />
-          </div>
-          <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center">
-            <div className="w-2.5 h-2.5 rounded-full bg-green-400 animate-pulse" />
-          </div>
+          <img src={logoImg} alt="Who Goes First?" className="w-24 h-24 object-contain" />
         </div>
 
         <div className="space-y-3">
@@ -410,14 +406,14 @@ function LandingScreen({
             Who Goes First?
           </h1>
           <p className="text-lg text-white/50 font-light leading-relaxed">
-            Point your camera at the group. AI picks who starts — no dice needed.
+            Take a photo of your game group and let AI randomly select who goes first. 
           </p>
         </div>
 
         <div className="flex items-center gap-3 px-4 py-2.5 rounded-md bg-white/5 border border-white/10">
           <Shield className="w-4 h-4 text-green-400 shrink-0" />
           <span className="text-sm text-white/60">
-            100% private — nothing leaves your device
+            100% private — your picture never leaves your device
           </span>
         </div>
 
@@ -437,7 +433,7 @@ function LandingScreen({
           {modelsLoaded ? (
             <>
               <Crown className="w-5 h-5 mr-2" />
-              Start Game
+              Get Started
             </>
           ) : (
             <>
@@ -567,7 +563,7 @@ function CameraPhase({
                 <div className="absolute inset-1 rounded-full border-2 border-black/20" />
                 <Crown className="w-8 h-8 text-black" />
               </button>
-              <span className="mt-2 text-xs text-white/50 font-medium">Crown the King</span>
+              <span className="mt-2 text-xs text-white/50 font-medium">Take Photo</span>
             </div>
 
             <div className="w-12" />
