@@ -3,7 +3,6 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
-import { Link } from "wouter";
 
 function trackEvent(eventType: string, facesDetected?: number) {
   fetch("/api/stats/event", {
@@ -482,13 +481,6 @@ function LandingScreen({
           </div>
         </div>
 
-        <Link
-          href="/stats"
-          className="text-xs text-white/20 hover:text-white/40 transition-colors"
-          data-testid="link-stats"
-        >
-          View usage stats
-        </Link>
       </div>
     </div>
   );

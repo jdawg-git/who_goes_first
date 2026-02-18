@@ -143,8 +143,10 @@ export default function StatsPage() {
                       No activity yet
                     </div>
                   ) : (
-                    <div className="flex items-end gap-1 h-32" data-testid="chart-activity">
-                      {stats.recentActivity.map((day) => (
+                    <div className="flex items-end gap-1" style={{ height: "128px" }} data-testid="chart-activity">
+                      {stats.recentActivity.map((day) => {
+                        const barHeight = Math.max((day.count / maxActivity) * 120, 6);
+                        return (
                         <div
                           key={day.date}
                           className="flex-1 min-w-0 group relative"
@@ -152,14 +154,15 @@ export default function StatsPage() {
                           <div
                             className="bg-primary rounded-t-sm transition-all w-full"
                             style={{
-                              height: `${Math.max((day.count / maxActivity) * 100, 8)}%`,
+                              height: `${barHeight}px`,
                             }}
                           />
                           <div className="invisible group-hover:visible absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 bg-popover text-popover-foreground text-xs rounded shadow-md whitespace-nowrap border z-10">
                             {day.date}: {day.count} events
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
