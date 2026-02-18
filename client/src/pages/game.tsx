@@ -787,9 +787,8 @@ function OverlayPhase({
           <div className="flex flex-col items-center gap-5">
             <div className="text-center">
               <p className="text-amber-400 text-sm font-semibold tracking-widest uppercase mb-1 animate-fade-in">
-                The Chosen One
+                Player {winnerIndex + 1} Goes First!
               </p>
-              <p className="text-white/50 text-xs">Player {winnerIndex + 1} goes first!</p>
             </div>
 
             <div className="flex items-center gap-3">
