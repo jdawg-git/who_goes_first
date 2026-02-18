@@ -6,18 +6,24 @@ A "magic mirror" style web application that captures a group photo and uses on-d
 ## Current State
 - MVP complete with full game flow: Landing -> Camera -> Detection -> Spin Animation -> Winner Coronation
 - All processing is on-device (privacy-first, works in airplane mode once cached)
-- No database needed - this is a fully client-side application
+- Stats dashboard at /stats tracking photos taken, uploaded, and respins
+- Respin excludes previous winner from selection pool
 
 ## Tech Stack
 - Frontend: React + TypeScript + Tailwind CSS + Shadcn UI
 - Face Detection: face-api.js with TinyFaceDetector model (~200KB)
 - Rendering: HTML5 Canvas for frame capture, CSS for animations
-- Backend: Express.js (serves static files only)
+- Backend: Express.js with PostgreSQL (Drizzle ORM) for stats tracking
+- Database: PostgreSQL with `stats_events` table
 
 ## Project Architecture
 - `client/src/pages/game.tsx` - Main game component with all phases (landing, camera, detecting, spinning, winner)
+- `client/src/pages/stats.tsx` - Stats dashboard showing usage metrics
 - `client/public/models/` - TinyFaceDetector model weights (manifest + shard)
-- No API routes needed - everything runs client-side
+- `shared/schema.ts` - Database schema (stats_events table)
+- `server/routes.ts` - API routes: POST /api/stats/event, GET /api/stats
+- `server/storage.ts` - Database storage layer
+- `server/db.ts` - Database connection
 
 ## Key Design Decisions
 - Dark theme by default for immersive game feel

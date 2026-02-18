@@ -3,6 +3,15 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
+import { Link } from "wouter";
+
+function trackEvent(eventType: string, facesDetected?: number) {
+  fetch("/api/stats/event", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ eventType, facesDetected }),
+  }).catch(() => {});
+}
 
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
@@ -32,6 +41,7 @@ export default function GamePage() {
   const capturingRef = useRef(false);
   const pendingStreamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoSourceRef = useRef<"photo_taken" | "photo_uploaded">("photo_taken");
 
   useEffect(() => {
     loadModels();
@@ -144,6 +154,7 @@ export default function GamePage() {
       }));
 
       setFaces(faceBoxes);
+      trackEvent(photoSourceRef.current, faceBoxes.length);
       const arr = new Uint32Array(1);
       crypto.getRandomValues(arr);
       const winner = arr[0] % faceBoxes.length;
@@ -180,6 +191,7 @@ export default function GamePage() {
     ctx.restore();
 
     stopCamera();
+    photoSourceRef.current = "photo_taken";
     await runDetection();
   }
 
@@ -201,6 +213,7 @@ export default function GamePage() {
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(img.src);
+      photoSourceRef.current = "photo_uploaded";
       await runDetection();
     };
     img.onerror = () => {
@@ -326,6 +339,7 @@ export default function GamePage() {
 
   function respin() {
     cancelPendingAnimation();
+    trackEvent("respin", faces.length);
     const previousWinner = winnerIndex;
     setHighlightIndex(-1);
     setWinnerIndex(-1);
@@ -467,6 +481,14 @@ function LandingScreen({
             <span>~10 seconds</span>
           </div>
         </div>
+
+        <Link
+          href="/stats"
+          className="text-xs text-white/20 hover:text-white/40 transition-colors"
+          data-testid="link-stats"
+        >
+          View usage stats
+        </Link>
       </div>
     </div>
   );
