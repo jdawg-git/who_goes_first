@@ -432,7 +432,7 @@ function LandingScreen({
         <img
           src={logoPng}
           alt="Who Goes First Logo"
-          className="w-1/2 h-auto opacity-90 drop-shadow-2xl"
+          className="w-[75%] h-auto opacity-90 drop-shadow-2xl"
         />
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
