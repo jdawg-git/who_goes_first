@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Camera, Upload, RotateCcw, Users, TrendingUp, BarChart3 } from "lucide-react";
 import { useLocation } from "wouter";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 interface Stats {
   photosTaken: number;
@@ -11,6 +12,7 @@ interface Stats {
   totalGames: number;
   avgFaces: number;
   recentActivity: { date: string; count: number }[];
+  recentSessions: { date: string; mode: string; respins: number; groupSize: number }[];
 }
 
 export default function StatsPage() {
@@ -168,6 +170,46 @@ export default function StatsPage() {
                 </CardContent>
               </Card>
             </div>
+
+            <Card data-testid="card-session-history">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold">Recent Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date & Time</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead className="text-right">Group Size</TableHead>
+                      <TableHead className="text-right">Respins</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.recentSessions.map((session, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="font-medium">{session.date}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {session.mode === 'Photo' ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                            {session.mode}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{session.groupSize}</TableCell>
+                        <TableCell className="text-right">{session.respins}</TableCell>
+                      </TableRow>
+                    ))}
+                    {stats.recentSessions.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                          No recent usage data available
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
           </>
         ) : (
           <Card>

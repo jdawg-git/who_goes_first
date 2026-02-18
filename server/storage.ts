@@ -1,6 +1,6 @@
 import { type User, type InsertUser, type InsertStatsEvent, type StatsEvent, statsEvents } from "@shared/schema";
 import { db } from "./db";
-import { sql } from "drizzle-orm";
+import { sql, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -14,6 +14,7 @@ export interface IStorage {
     totalGames: number;
     avgFaces: number;
     recentActivity: { date: string; count: number }[];
+    recentSessions: { date: string; mode: string; respins: number; groupSize: number }[];
   }>;
 }
 
@@ -65,6 +66,37 @@ export class DatabaseStorage implements IStorage {
       .groupBy(sql`to_char(created_at, 'YYYY-MM-DD')`)
       .orderBy(sql`to_char(created_at, 'YYYY-MM-DD')`);
 
+    // Fetch individual sessions. We'll approximate sessions by looking at photos taken/uploaded
+    // and then joining with respins that happened shortly after.
+    // For simplicity, we'll just list the raw events but formatted nicely.
+    const rawEvents = await db.select()
+      .from(statsEvents)
+      .orderBy(desc(statsEvents.createdAt))
+      .limit(50);
+
+    const sessions: { date: string; mode: string; respins: number; groupSize: number }[] = [];
+    
+    // Simple grouping logic: if it's a photo, it's a new session.
+    // If it's a respin, it belongs to the most recent session.
+    let currentSession: typeof sessions[0] | null = null;
+    
+    // Sort oldest to newest for grouping, then reverse back
+    const sortedEvents = [...rawEvents].reverse();
+    
+    for (const event of sortedEvents) {
+      if (event.eventType === 'photo_taken' || event.eventType === 'photo_uploaded') {
+        currentSession = {
+          date: event.createdAt.toLocaleString(),
+          mode: event.eventType === 'photo_taken' ? 'Photo' : 'Upload',
+          respins: 0,
+          groupSize: event.facesDetected ?? 0
+        };
+        sessions.push(currentSession);
+      } else if (event.eventType === 'respin' && currentSession) {
+        currentSession.respins++;
+      }
+    }
+
     return {
       photosTaken: photosTakenResult[0]?.count ?? 0,
       photosUploaded: photosUploadedResult[0]?.count ?? 0,
@@ -72,6 +104,7 @@ export class DatabaseStorage implements IStorage {
       totalGames: totalGamesResult[0]?.count ?? 0,
       avgFaces: Math.round((avgFacesResult[0]?.avg ?? 0) * 10) / 10,
       recentActivity: recentActivityResult,
+      recentSessions: sessions.reverse().slice(0, 20),
     };
   }
 }
