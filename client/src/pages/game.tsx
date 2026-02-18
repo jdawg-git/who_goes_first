@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
-import { Shield, Crown, RotateCcw, Users, Loader2, Upload } from "lucide-react";
+import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload } from "lucide-react";
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
 
@@ -507,7 +507,7 @@ function CameraPhase({
           onClick={onBack}
           className="text-white/70 bg-black/30 backdrop-blur-sm"
         >
-          <RotateCcw className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" />
         </Button>
         <span className="text-white/90 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-md">
           {hasCamera ? "Align your group" : "Upload a group photo"}
@@ -611,7 +611,7 @@ function DetectingPhase({
           onClick={onBack}
           className="text-white/70 bg-black/30 backdrop-blur-sm"
         >
-          <RotateCcw className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5" />
         </Button>
         <span className="text-white/90 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-md">
           Scanning faces...
