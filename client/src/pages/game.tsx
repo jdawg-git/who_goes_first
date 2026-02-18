@@ -45,6 +45,7 @@ export default function GamePage() {
 
   useEffect(() => {
     loadModels();
+    window.dispatchEvent(new Event("app-ready"));
     return () => {
       stopCamera();
       cancelPendingAnimation();
