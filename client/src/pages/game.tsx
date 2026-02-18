@@ -143,7 +143,9 @@ export default function GamePage() {
       }));
 
       setFaces(faceBoxes);
-      const winner = Math.floor(Math.random() * faceBoxes.length);
+      const arr = new Uint32Array(1);
+      crypto.getRandomValues(arr);
+      const winner = arr[0] % faceBoxes.length;
       setWinnerIndex(winner);
       capturingRef.current = false;
       setPhase("spinning");
@@ -315,7 +317,9 @@ export default function GamePage() {
     cancelPendingAnimation();
     setHighlightIndex(-1);
     setWinnerIndex(-1);
-    const winner = Math.floor(Math.random() * faces.length);
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    const winner = arr[0] % faces.length;
     setWinnerIndex(winner);
     setPhase("spinning");
     runSpinAnimation(faces, winner);
