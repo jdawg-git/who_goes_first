@@ -429,23 +429,23 @@ function LandingScreen({
   onStart: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-[#0a0a1a] via-[#0f0f2e] to-[#0a0a1a] flex flex-col items-center justify-center px-6 overflow-hidden">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <div className="fixed inset-0 bg-gradient-to-br from-[#0a0a1a] via-[#0f0f2e] to-[#0a0a1a] flex flex-col items-center overflow-y-auto">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-[120px] animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-purple-500/5 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: "1s" }} />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
+      <div className="relative z-10 flex flex-col items-center gap-6 sm:gap-8 max-w-md text-center px-6 py-8 sm:py-0 sm:justify-center sm:min-h-screen">
         <img
           src={logoPng}
           alt="Who Goes First Logo"
-          className="w-[150%] max-w-none h-auto opacity-90 drop-shadow-2xl px-4"
+          className="w-[120%] sm:w-[150%] max-w-none h-auto opacity-90 drop-shadow-2xl px-4"
         />
         <div className="space-y-3">
-          <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-bold text-white tracking-tight">
             Who Goes First?
           </h1>
-          <p className="text-lg text-white/50 font-light leading-relaxed">
+          <p className="text-base sm:text-lg text-white/50 font-light leading-relaxed">
             Take a photo of your game group and let AI randomly select who goes first. 
           </p>
         </div>
