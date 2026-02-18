@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
-import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload } from "lucide-react";
+import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
 import logoImg from "@assets/Crop_image_project_1771381513726.png";
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
@@ -314,6 +314,16 @@ export default function GamePage() {
     setCanvasUrl("");
   }
 
+  function retakePhoto() {
+    cancelPendingAnimation();
+    setFaces([]);
+    setHighlightIndex(-1);
+    setWinnerIndex(-1);
+    setErrorMessage("");
+    setCanvasUrl("");
+    startCamera();
+  }
+
   function respin() {
     cancelPendingAnimation();
     setHighlightIndex(-1);
@@ -369,6 +379,7 @@ export default function GamePage() {
           winnerIndex={winnerIndex}
           isWinner={phase === "winner"}
           onRespin={respin}
+          onRetake={retakePhoto}
           onReset={resetGame}
         />
       )}
@@ -510,7 +521,7 @@ function CameraPhase({
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <span className="text-white/90 text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-1.5 rounded-md">
-          {hasCamera ? "Align your group" : "Upload a group photo"}
+          {hasCamera ? "Get your group in the photo!" : "Upload a group photo"}
         </span>
         <div className="w-9" />
       </div>
@@ -644,6 +655,7 @@ function OverlayPhase({
   winnerIndex,
   isWinner,
   onRespin,
+  onRetake,
   onReset,
 }: {
   canvasUrl: string;
@@ -653,6 +665,7 @@ function OverlayPhase({
   winnerIndex: number;
   isWinner: boolean;
   onRespin: () => void;
+  onRetake: () => void;
   onReset: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -783,7 +796,15 @@ function OverlayPhase({
               <p className="text-white/50 text-xs">Player {winnerIndex + 1} goes first!</p>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
+              <Button
+                data-testid="button-reset"
+                size="icon"
+                onClick={onReset}
+                className="bg-black/80 text-white/80 border border-white/10 backdrop-blur-sm no-default-hover-elevate no-default-active-elevate hover:bg-black/90 hover:text-white transition-colors"
+              >
+                <Home className="w-5 h-5" />
+              </Button>
               <Button
                 data-testid="button-respin"
                 onClick={onRespin}
@@ -793,12 +814,12 @@ function OverlayPhase({
                 Respin
               </Button>
               <Button
-                data-testid="button-reset"
-                variant="outline"
-                onClick={onReset}
-                className="border-white/20 text-white/70"
+                data-testid="button-retake"
+                size="icon"
+                onClick={onRetake}
+                className="bg-black/80 text-white/80 border border-white/10 backdrop-blur-sm no-default-hover-elevate no-default-active-elevate hover:bg-black/90 hover:text-white transition-colors"
               >
-                Back to Start
+                <Camera className="w-5 h-5" />
               </Button>
             </div>
           </div>
