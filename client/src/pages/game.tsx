@@ -3,7 +3,7 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
-import logoPng from "@assets/photos_1771384512533.png";
+import logoPng from "@assets/photos_1771385357298.png";
 
 function trackEvent(eventType: string, facesDetected?: number) {
   fetch("/api/stats/event", {
