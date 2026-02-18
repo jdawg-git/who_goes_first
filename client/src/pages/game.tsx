@@ -3,7 +3,7 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
-import logoImg from "@assets/Crop_image_project_1771381513726.png";
+
 
 type GamePhase = "landing" | "camera" | "detecting" | "spinning" | "winner";
 
@@ -408,10 +408,6 @@ function LandingScreen({
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
-        <div className="relative">
-          <img src={logoImg} alt="Who Goes First?" className="w-24 h-24 object-contain" />
-        </div>
-
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
             Who Goes First?
