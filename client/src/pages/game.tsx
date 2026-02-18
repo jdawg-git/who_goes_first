@@ -291,7 +291,14 @@ export default function GamePage() {
     return steps;
   }
 
+  function triggerHaptic() {
+    if (navigator.vibrate) {
+      navigator.vibrate([100, 50, 200]);
+    }
+  }
+
   function fireConfetti() {
+    triggerHaptic();
     const duration = 2000;
     const end = Date.now() + duration;
     const colors = ["#fbbf24", "#f59e0b", "#22d3ee", "#ffffff"];
