@@ -3,6 +3,7 @@ import * as faceapi from "face-api.js";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Shield, Crown, RotateCcw, ArrowLeft, Users, Loader2, Upload, Home, Camera } from "lucide-react";
+import logoPng from "@assets/photos_1771384512533.png";
 
 function trackEvent(eventType: string, facesDetected?: number) {
   fetch("/api/stats/event", {
@@ -428,6 +429,11 @@ function LandingScreen({
       </div>
 
       <div className="relative z-10 flex flex-col items-center gap-8 max-w-md text-center">
+        <img
+          src={logoPng}
+          alt="Who Goes First Logo"
+          className="w-1/2 h-auto opacity-90 drop-shadow-2xl"
+        />
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">
             Who Goes First?
