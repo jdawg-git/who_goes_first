@@ -185,28 +185,28 @@ export default function StatsPage() {
                       <TableHead className="text-right">Respins</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {stats.recentSessions.map((session, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-medium">{session.date}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            {session.mode === 'Photo' ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
-                            {session.mode}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">{session.groupSize}</TableCell>
-                        <TableCell className="text-right">{session.respins}</TableCell>
-                      </TableRow>
-                    ))}
-                    {stats.recentSessions.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
-                          No recent usage data available
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
+          <TableBody>
+            {stats.recentSessions?.map((session, i) => (
+              <TableRow key={i}>
+                <TableCell className="font-medium">{session.date}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    {session.mode === 'Photo' ? <Camera className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
+                    {session.mode}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">{session.groupSize}</TableCell>
+                <TableCell className="text-right">{session.respins}</TableCell>
+              </TableRow>
+            ))}
+            {(!stats.recentSessions || stats.recentSessions.length === 0) && (
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground h-24">
+                  No recent usage data available
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
                 </Table>
               </CardContent>
             </Card>
