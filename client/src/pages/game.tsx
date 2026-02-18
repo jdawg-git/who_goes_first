@@ -326,11 +326,18 @@ export default function GamePage() {
 
   function respin() {
     cancelPendingAnimation();
+    const previousWinner = winnerIndex;
     setHighlightIndex(-1);
     setWinnerIndex(-1);
     const arr = new Uint32Array(1);
     crypto.getRandomValues(arr);
-    const winner = arr[0] % faces.length;
+    let winner: number;
+    if (faces.length > 1) {
+      winner = arr[0] % (faces.length - 1);
+      if (winner >= previousWinner) winner++;
+    } else {
+      winner = 0;
+    }
     setWinnerIndex(winner);
     setPhase("spinning");
     runSpinAnimation(faces, winner);
