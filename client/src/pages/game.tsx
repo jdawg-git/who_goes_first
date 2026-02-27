@@ -161,8 +161,14 @@ export default function GamePage() {
       const winner = arr[0] % faceBoxes.length;
       setWinnerIndex(winner);
       capturingRef.current = false;
-      setPhase("spinning");
-      runSpinAnimation(faceBoxes, winner);
+      if (faceBoxes.length === 1) {
+        setHighlightIndex(0);
+        setPhase("winner");
+        fireConfetti();
+      } else {
+        setPhase("spinning");
+        runSpinAnimation(faceBoxes, winner);
+      }
     } catch (err) {
       console.error("Detection error:", err);
       setErrorMessage("Face detection failed. Please try again.");
@@ -259,12 +265,17 @@ export default function GamePage() {
     animFrameRef.current = requestAnimationFrame(tick);
   }
 
+  function getSpinDuration(faceCount: number): number {
+    if (faceCount <= 1) return 0;
+    return Math.min(5000, 1500 + (faceCount - 2) * 1000);
+  }
+
   function buildSpinSchedule(faceCount: number, winner: number) {
-    const totalDuration = 5000;
+    const totalDuration = getSpinDuration(faceCount);
     const minInterval = 180;
     const maxInterval = 900;
 
-    const fullCycles = 3;
+    const fullCycles = faceCount <= 2 ? 2 : 3;
     const baseSteps = fullCycles * faceCount;
     const lastFaceOfBase = (baseSteps - 1) % faceCount;
     const extraToWinner = ((winner - lastFaceOfBase + faceCount) % faceCount);
@@ -361,8 +372,14 @@ export default function GamePage() {
       winner = 0;
     }
     setWinnerIndex(winner);
-    setPhase("spinning");
-    runSpinAnimation(faces, winner);
+    if (faces.length === 1) {
+      setHighlightIndex(0);
+      setPhase("winner");
+      fireConfetti();
+    } else {
+      setPhase("spinning");
+      runSpinAnimation(faces, winner);
+    }
   }
 
   if (phase === "landing") {
