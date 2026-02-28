@@ -129,7 +129,8 @@ export default function GamePage() {
 
   async function runDetection() {
     const canvas = canvasRef.current!;
-    setCanvasUrl(canvas.toDataURL());
+
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
 
     try {
       const options = new faceapi.TinyFaceDetectorOptions({
@@ -184,7 +185,6 @@ export default function GamePage() {
     if (capturingRef.current) return;
     capturingRef.current = true;
 
-    setPhase("detecting");
     setErrorMessage("");
 
     const video = videoRef.current;
@@ -197,6 +197,8 @@ export default function GamePage() {
     ctx.drawImage(video, -canvas.width, 0);
     ctx.restore();
 
+    setCanvasUrl(canvas.toDataURL());
+    setPhase("detecting");
     stopCamera();
     photoSourceRef.current = "photo_taken";
     await runDetection();
@@ -208,7 +210,6 @@ export default function GamePage() {
     if (capturingRef.current) return;
     capturingRef.current = true;
 
-    setPhase("detecting");
     setErrorMessage("");
     stopCamera();
 
@@ -220,6 +221,8 @@ export default function GamePage() {
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(img.src);
+      setCanvasUrl(canvas.toDataURL());
+      setPhase("detecting");
       photoSourceRef.current = "photo_uploaded";
       await runDetection();
     };
